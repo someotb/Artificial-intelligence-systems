@@ -46,6 +46,7 @@ plt.scatter(data["comments_len"], data["rating"])
 plt.xlabel("Comments Len")
 plt.ylabel("Rating")
 
+# HeatMap
 plt.figure(2)
 plt.title("Correlation Heatmap")
 sns.heatmap(int_data.corr(), cmap="coolwarm", center=0)
