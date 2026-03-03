@@ -31,11 +31,7 @@ str_data = data[
     ]
 ]
 
-drugs = [d for d in data.columns if "paxil" in d]
-effectivnes = [e for e in data.columns if "Highly Effective" in e]
-side_effect = [d for d in data.columns if "Mild Side Effects" in d]
-condition = [d for d in data.columns if "Depression" in d]
-
+# Scatter
 plt.figure(1)
 plt.subplot(3, 1, 1)
 plt.scatter(data["benefits_len"], data["rating"])
@@ -54,8 +50,8 @@ plt.figure(2)
 plt.title("Correlation Heatmap")
 sns.heatmap(int_data.corr(), cmap="coolwarm", center=0)
 
+# Hist
 plt.figure(3)
-
 plt.subplot(1, 4, 1)
 plt.xlabel("Рейтинг")
 plt.ylabel("Кол-во оценок")
@@ -76,27 +72,24 @@ plt.xlabel("Длина отзыва")
 plt.ylabel("Кол-во отзывов")
 data["comments_len"].hist(figsize=(10, 5))
 
-# plt.figure(4)
-# sns.pairplot(str_data[drugs])
-# plt.subplot(2, 2, 1)
-# plt.xlabel("Рейтинг")
-# plt.ylabel("Кол-во оценок")
-# data[drugs].hist(figsize=(5, 5))
+# BoxPlot
+plt.figure(4)
+plt.subplot(1, 4, 1)
+plt.xlabel("Рейтинг")
+sns.boxplot(int_data["rating"])
 
-# plt.subplot(2, 2, 2)
-# plt.xlabel("Длина отзыва")
-# plt.ylabel("Кол-во отзывов")
-# data[effectivnes].hist(figsize=(5, 5))
+plt.subplot(1, 4, 2)
+plt.xlabel("Длина положительных отзывов")
+sns.boxplot(int_data["benefits_len"])
 
-# plt.subplot(2, 2, 3)
-# plt.xlabel("Длина отзыва")
-# plt.ylabel("Кол-во отзывов")
-# data[side_effect].hist(figsize=(5, 5))
+plt.subplot(1, 4, 3)
+plt.xlabel("Длина отзыва о побочных эффектах")
+sns.boxplot(int_data["sideEffects_len"])
 
-# plt.subplot(2, 2, 4)
-# plt.xlabel("Длина отзыва")
-# plt.ylabel("Кол-во отзывов")
-# data[condition].hist(figsize=(5, 5))
+plt.subplot(1, 4, 4)
+plt.xlabel("Длина комментаря")
+sns.boxplot(int_data["comments_len"])
+
 
 plt.tight_layout()
 plt.show()
