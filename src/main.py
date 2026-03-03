@@ -91,6 +91,12 @@ plt.subplot(1, 4, 4)
 plt.xlabel("Длина комментаря")
 sns.boxplot(int_data["comments_len"])
 
+# PairPlot
+sns.pairplot(int_data, hue="rating")
+sns.pairplot(int_data, hue="benefits_len")
+sns.pairplot(int_data, hue="sideEffects_len")
+sns.pairplot(int_data, hue="comments_len")
+
 
 plt.tight_layout()
 plt.show()
