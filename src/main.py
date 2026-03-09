@@ -34,9 +34,15 @@ str_data = data[
 
 # PairPlot
 sns.pairplot(int_data, hue="rating")
-plt.tight_layout()
 
 # Классификация
+X, X_holdout, y, y_holdout = skl.model_selection.train_test_split(
+    int_data[["benefits_len", "sideEffects_len", "comments_len"]],
+    int_data[["rating"]].values.ravel(),
+    test_size=0.2,
+    random_state=42,
+)
+
 K_list = np.arange(1, 51)
 scores_list = []
 
@@ -44,12 +50,12 @@ skf = skl.model_selection.StratifiedKFold(n_splits=5, shuffle=True, random_state
 
 for k in K_list:
     knn_test = skl.neighbors.KNeighborsClassifier(n_neighbors=k)
-    scores = skl.model_selection.cross_val_score(knn_test, int_data[["benefits_len", "sideEffects_len", "comments_len"]],  int_data[["rating"]].values.ravel(), cv=skf, scoring="accuracy")
+    scores = skl.model_selection.cross_val_score(knn_test, X, y, cv=skf, scoring="accuracy")
     scores_list.append(scores.mean())
 
 ER = [1 - x for x in scores_list]
 
-plt.figure(1)
+plt.figure(2)
 plt.plot(K_list, ER)
 plt.xlabel("Кол-во соседей")
 plt.ylabel("Ошибка классификации(ER)")
@@ -63,13 +69,6 @@ for i in range(len(ER)):
 print(f"Оптимальные значения K:")
 for k in best_K:
     print(f"Index: {k} | ER[{k}]: {ER[k]}")
-
-X, X_holdout, y, y_holdout = skl.model_selection.train_test_split(
-    int_data[["benefits_len", "sideEffects_len", "comments_len"]],
-    int_data[["rating"]].values.ravel(),
-    test_size=0.2,
-    random_state=42,
-)
 
 knn = skl.neighbors.KNeighborsClassifier(n_neighbors=best_K[0])
 knn.fit(X, y)
@@ -86,4 +85,5 @@ for i in range(len(knn_predict)):
 
 print(f"\nAccuracy: {accuracy}")
 
+plt.tight_layout()
 plt.show()
