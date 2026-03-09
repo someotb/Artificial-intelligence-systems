@@ -1,7 +1,8 @@
+import numpy as np
 import pandas as pd
 import seaborn as sns
+import sklearn as skl
 from matplotlib import pyplot as plt
-from pandas.core.methods.selectn import DataFrame
 
 DATA_FILE = "../data/drugLibTest_raw.tsv"
 
@@ -14,9 +15,9 @@ print("\n")
 print("Кол-во строк, столбцов: ", data.shape, "\n")
 print("Имена столбцов:\n", data.columns, "\n")
 
-data["benefits_len"] = data["benefitsReview"].str.len()
-data["sideEffects_len"] = data["sideEffectsReview"].str.len()
-data["comments_len"] = data["commentsReview"].str.len()
+data["benefits_len"] = data["benefitsReview"].str.len().fillna(0).astype(int)
+data["sideEffects_len"] = data["sideEffectsReview"].str.len().fillna(0).astype(int)
+data["comments_len"] = data["commentsReview"].str.len().fillna(0).astype(int)
 
 int_data = data[["rating", "benefits_len", "sideEffects_len", "comments_len"]]
 str_data = data[
@@ -31,72 +32,58 @@ str_data = data[
     ]
 ]
 
-# Scatter
-plt.figure(1)
-plt.subplot(3, 1, 1)
-plt.scatter(data["benefits_len"], data["rating"])
-plt.xlabel("Benefits Len")
-plt.ylabel("Rating")
-plt.subplot(3, 1, 2)
-plt.scatter(data["sideEffects_len"], data["rating"])
-plt.xlabel("SideEffects Len")
-plt.ylabel("Rating")
-plt.subplot(3, 1, 3)
-plt.scatter(data["comments_len"], data["rating"])
-plt.xlabel("Comments Len")
-plt.ylabel("Rating")
-
-# HeatMap
-plt.figure(2)
-plt.title("Correlation Heatmap")
-sns.heatmap(int_data.corr(), cmap="coolwarm", center=0)
-
-# Hist
-plt.figure(3)
-plt.subplot(1, 4, 1)
-plt.xlabel("Рейтинг")
-plt.ylabel("Кол-во оценок")
-data["rating"].hist(figsize=(10, 5))
-
-plt.subplot(1, 4, 2)
-plt.xlabel("Длина отзыва")
-plt.ylabel("Кол-во отзывов")
-data["benefits_len"].hist(figsize=(10, 5))
-
-plt.subplot(1, 4, 3)
-plt.xlabel("Длина отзыва")
-plt.ylabel("Кол-во отзывов")
-data["sideEffects_len"].hist(figsize=(10, 5))
-
-plt.subplot(1, 4, 4)
-plt.xlabel("Длина отзыва")
-plt.ylabel("Кол-во отзывов")
-data["comments_len"].hist(figsize=(10, 5))
-
-# BoxPlot
-plt.figure(4)
-plt.subplot(1, 4, 1)
-plt.xlabel("Рейтинг")
-sns.boxplot(int_data["rating"])
-
-plt.subplot(1, 4, 2)
-plt.xlabel("Длина положительных отзывов")
-sns.boxplot(int_data["benefits_len"])
-
-plt.subplot(1, 4, 3)
-plt.xlabel("Длина отзыва о побочных эффектах")
-sns.boxplot(int_data["sideEffects_len"])
-
-plt.subplot(1, 4, 4)
-plt.xlabel("Длина комментаря")
-sns.boxplot(int_data["comments_len"])
-
 # PairPlot
 sns.pairplot(int_data, hue="rating")
-sns.pairplot(int_data, hue="benefits_len")
-sns.pairplot(int_data, hue="sideEffects_len")
-sns.pairplot(int_data, hue="comments_len")
-
-
 plt.tight_layout()
+
+# Классификация
+K_list = np.arange(1, 51)
+scores_list = []
+
+skf = skl.model_selection.StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+
+for k in K_list:
+    knn_test = skl.neighbors.KNeighborsClassifier(n_neighbors=k)
+    scores = skl.model_selection.cross_val_score(knn_test, int_data[["benefits_len", "sideEffects_len", "comments_len"]],  int_data[["rating"]].values.ravel(), cv=skf, scoring="accuracy")
+    scores_list.append(scores.mean())
+
+MSE = [1 - x for x in scores_list]
+
+plt.figure(1)
+plt.plot(K_list, MSE)
+plt.xlabel("Кол-во соседей")
+plt.ylabel("Ошибка классификации(MSE)")
+
+best_K = []
+min_MSE = min(MSE)
+for i in range(len(MSE)):
+    if MSE[i] <= min_MSE:
+        best_K.append(i)
+
+print(f"Оптимальные значения K:")
+for k in best_K:
+    print(f"Index: {k} | MSE[{k}]: {MSE[k]}")
+
+X, X_holdout, y, y_holdout = skl.model_selection.train_test_split(
+    int_data[["benefits_len", "sideEffects_len", "comments_len"]],
+    int_data[["rating"]].values.ravel(),
+    test_size=0.2,
+    random_state=42,
+)
+
+knn = skl.neighbors.KNeighborsClassifier(n_neighbors=best_K[0])
+knn.fit(X, y)
+knn_predict = knn.predict(X_holdout)
+accuracy = skl.metrics.accuracy_score(y_holdout, knn_predict)
+
+print("\nТаблица сравнения Predict и Original:")
+for i in range(len(knn_predict)):
+    if (i > 0 and i < 10):
+        if (knn_predict[i] == y_holdout[i]):
+            print(f"\tPredict: {knn_predict[i]}, Original: {y_holdout[i]} | Hit")
+        else:
+            print(f"\tPredict: {knn_predict[i]}, Original: {y_holdout[i]} | Miss")
+
+print(f"\nAccuracy: {accuracy}")
+
 plt.show()
