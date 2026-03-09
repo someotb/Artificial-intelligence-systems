@@ -47,22 +47,22 @@ for k in K_list:
     scores = skl.model_selection.cross_val_score(knn_test, int_data[["benefits_len", "sideEffects_len", "comments_len"]],  int_data[["rating"]].values.ravel(), cv=skf, scoring="accuracy")
     scores_list.append(scores.mean())
 
-MSE = [1 - x for x in scores_list]
+ER = [1 - x for x in scores_list]
 
 plt.figure(1)
-plt.plot(K_list, MSE)
+plt.plot(K_list, ER)
 plt.xlabel("Кол-во соседей")
-plt.ylabel("Ошибка классификации(MSE)")
+plt.ylabel("Ошибка классификации(ER)")
 
 best_K = []
-min_MSE = min(MSE)
-for i in range(len(MSE)):
-    if MSE[i] <= min_MSE:
+min_ER = min(ER)
+for i in range(len(ER)):
+    if ER[i] <= min_ER:
         best_K.append(i)
 
 print(f"Оптимальные значения K:")
 for k in best_K:
-    print(f"Index: {k} | MSE[{k}]: {MSE[k]}")
+    print(f"Index: {k} | ER[{k}]: {ER[k]}")
 
 X, X_holdout, y, y_holdout = skl.model_selection.train_test_split(
     int_data[["benefits_len", "sideEffects_len", "comments_len"]],
