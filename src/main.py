@@ -1,89 +1,98 @@
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import sklearn as skl
+import func
 from matplotlib import pyplot as plt
+from sklearn import tree
+from sklearn.tree import DecisionTreeClassifier, plot_tree
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
+from sklearn.metrics import accuracy_score, mean_absolute_error
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import LabelEncoder
 
 DATA_FILE = "../data/drugLibTest_raw.tsv"
 
 data = pd.read_csv(DATA_FILE, sep="\t", engine="python")
 
-print("Общая информация о dataset:")
-data.info()
+data["benefitsReview"] = data["benefitsReview"].fillna("")
+data["sideEffectsReview"] = data["sideEffectsReview"].fillna("")
+data["commentsReview"] = data["commentsReview"].fillna("")
+
+func.check_for_unic(data)
+
+# Переводим str в int для обучения, сохраняя порядок, где больше = лучше
+eff_map = {
+    'Ineffective': 0,
+    'Marginally Effective': 1,
+    'Moderately Effective': 2,
+    'Considerably Effective': 3,
+    'Highly Effective': 4
+}
+
+side_map = {
+    'No Side Effects': 0,
+    'Mild Side Effects': 1,
+    'Moderate Side Effects': 2,
+    'Severe Side Effects': 3,
+    'Extremely Severe Side Effects': 4
+}
+
+data['effectiveness'] = data['effectiveness'].map(eff_map)
+data['sideEffects'] = data['sideEffects'].map(side_map)
+
+# Получаем тон комментариев с помощью TextBlob
+data["benefits_tone"] = data["benefitsReview"].apply(func.get_tone)
+data["sideEffects_tone"] = data["sideEffectsReview"].apply(func.get_tone)
+data["comments_tone"] = data["commentsReview"].apply(func.get_tone)
+
+# Заменяем название болезни на средний рейтинг по этой болезни 
+le = LabelEncoder()
+data["condition"] = le.fit_transform(data["condition"].astype(str))
+data["urlDrugName"] = le.fit_transform(data["urlDrugName"].astype(str))
+
+X = data[["urlDrugName", "effectiveness", "sideEffects", "condition", "benefits_tone", "sideEffects_tone", "comments_tone"]]
+y = data["rating"]
+
+X_train, X_holdout, y_train, y_holdout = train_test_split(X, y, test_size=0.2, random_state=42)
+
+dtc = DecisionTreeClassifier(max_depth=4, random_state=42, max_features=7)
+tree_params = { "max_depth": range(1,20), "max_features": range(1,10) }
+tree_grid = GridSearchCV(dtc, tree_params, cv=10, verbose=True, n_jobs=-1)
+tree_grid.fit(X_train, y_train)
+
 print("\n")
+print(f"Лучшее сочетание параметров: {tree_grid.best_params_}")
+print(f"Лучшее баллы cross val: {tree_grid.best_score_}")
 
-print("Кол-во строк, столбцов: ", data.shape, "\n")
-print("Имена столбцов:\n", data.columns, "\n")
+class_names = [str(c) for c in sorted(y.unique())]
 
-data["benefits_len"] = data["benefitsReview"].str.len().fillna(0).astype(int)
-data["sideEffects_len"] = data["sideEffectsReview"].str.len().fillna(0).astype(int)
-data["comments_len"] = data["commentsReview"].str.len().fillna(0).astype(int)
-
-int_data = data[["rating", "benefits_len", "sideEffects_len", "comments_len"]]
-str_data = data[
-    [
-        "urlDrugName",
-        "effectiveness",
-        "sideEffects",
-        "condition",
-        "benefitsReview",
-        "sideEffectsReview",
-        "commentsReview",
-    ]
-]
-
-# PairPlot
-sns.pairplot(int_data, hue="rating")
-
-# Классификация
-X, X_holdout, y, y_holdout = skl.model_selection.train_test_split(
-    int_data[["benefits_len", "sideEffects_len", "comments_len"]],
-    int_data[["rating"]].values.ravel(),
-    test_size=0.2,
-    random_state=42,
+# Полученное дерево решений можно посмотреть можно тут: http://webgraphviz.com/
+tree.export_graphviz( 
+    tree_grid.best_estimator_, 
+    feature_names=X.columns, 
+    class_names=class_names,
+    out_file="drug_tree.dot", 
+    filled=True, 
+    rounded=True
 )
+# Само дерево
+plt.figure(figsize=(20, 10))
+plot_tree(tree_grid.best_estimator_, 
+          feature_names=X.columns, 
+          class_names=class_names, 
+          filled=True, 
+          fontsize=10)
+plt.savefig('tree.png')
 
-K_list = np.arange(1, 51)
-scores_list = []
+best_tree = tree_grid.best_estimator_
+predict = best_tree.predict(X_holdout)
+accur = accuracy_score(y_holdout, predict)
+mae = mean_absolute_error(y_holdout, predict)
 
-skf = skl.model_selection.StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+print(f"Точность: {accur}")
+print(f"Mean absolute error: {mae}")
 
-for k in K_list:
-    knn_test = skl.neighbors.KNeighborsClassifier(n_neighbors=k)
-    scores = skl.model_selection.cross_val_score(knn_test, X, y, cv=skf, scoring="accuracy")
-    scores_list.append(scores.mean())
-
-ER = [1 - x for x in scores_list]
-
-plt.figure(2)
-plt.plot(K_list, ER)
-plt.xlabel("Кол-во соседей")
-plt.ylabel("Ошибка классификации(ER)")
-
-best_K = []
-min_ER = min(ER)
-for i in range(len(ER)):
-    if ER[i] <= min_ER:
-        best_K.append(i)
-
-print(f"Оптимальные значения K:")
-for k in best_K:
-    print(f"Index: {k} | ER[{k}]: {ER[k]}")
-
-knn = skl.neighbors.KNeighborsClassifier(n_neighbors=best_K[0])
-knn.fit(X, y)
-knn_predict = knn.predict(X_holdout)
-accuracy = skl.metrics.accuracy_score(y_holdout, knn_predict)
-
-print("\nТаблица сравнения Predict и Original:")
-for i in range(len(knn_predict)):
-    if (i > 0 and i < 10):
-        if (knn_predict[i] == y_holdout[i]):
-            print(f"\tPredict: {knn_predict[i]}, Original: {y_holdout[i]} | Hit")
-        else:
-            print(f"\tPredict: {knn_predict[i]}, Original: {y_holdout[i]} | Miss")
-
-print(f"\nAccuracy: {accuracy}")
-
-plt.tight_layout()
-plt.show()
+y_test_values = y_holdout.values 
+print(f"\nOriginal | Predict")
+for i in range(10):
+    print(f"{y_test_values[i]} | {predict[i]}")
