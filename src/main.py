@@ -4,6 +4,8 @@ from matplotlib import pyplot as plt
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
+import func
+
 X_test = pd.read_csv("../data/lab6_X_test.csv")
 X_train = pd.read_csv("../data/lab6_X_train.csv")
 y_test = pd.read_csv("../data/lab6_Y_test.csv")
@@ -33,18 +35,25 @@ plt.ylabel("Target")
 plt.legend()
 
 # Многомерная регрессия
-regressor_md = LinearRegression()
-regressor_md.fit(X_train, y_train)
-y_pred_md = regressor_md.predict(X_test)
-
 print("\nМногомерная регрессия")
-print(f"R2:   {r2_score(y_test, y_pred_md):.4f}")
-print(f"MAE:  {mean_absolute_error(y_test, y_pred_md):.4f}")
-print(f"RMSE: {np.sqrt(mean_squared_error(y_test, y_pred_md)):.4f}")
+X_train_opt, remaining_cols = func.backward_elimination(X_train.values, y_train.values)
+
+X_test_opt = X_test.values[:, remaining_cols]
+X_test_opt = np.append(
+    arr=np.ones((len(X_test_opt), 1)).astype(float), values=X_test_opt, axis=1
+)
+
+regressor = LinearRegression()
+regressor.fit(X_train_opt, y_train)
+y_pred = regressor.predict(X_test_opt)
+
+print(f"R2:   {r2_score(y_test, y_pred):.4f}")
+print(f"MAE:  {mean_absolute_error(y_test, y_pred):.4f}")
+print(f"RMSE: {np.sqrt(mean_squared_error(y_test, y_pred)):.4f}")
 
 plt.figure(figsize=(8, 6))
 plt.scatter(range(len(y_test)), y_test.values, color="red", label="Real", alpha=0.5)
-plt.scatter(range(len(y_test)), y_pred_md, color="blue", label="Predicted", alpha=0.5)
+plt.scatter(range(len(y_test)), y_pred, color="blue", label="Predicted", alpha=0.5)
 plt.title("Multi-D: Real vs Predicted (Test)")
 plt.xlabel("Sample index")
 plt.ylabel("Target")
