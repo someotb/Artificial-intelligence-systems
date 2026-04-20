@@ -2,6 +2,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
+import func
+
 STOP = False
 DATA_FILE = "../data/drugLibTest_raw.tsv"
 
@@ -14,15 +16,16 @@ while not STOP:
     2) Label Encoding
     3) One Hot Encoding
     4) Fill gaps
-    5) Devide to Train and Test parts
-    6) Save to file
-    7) Exit
+    5) Get tone of text feature
+    6) Devide to Train and Test parts
+    7) Save to file
+    8) Exit
     Note: to return to past level enter 'b' to terminal
     """)
     try:
-        chos = int(input("Choose what you want to do (1-7): "))
+        chos = int(input("Choose what you want to do (1-8): "))
     except ValueError:
-        print("Chose numbers 1-7!")
+        print("Chose numbers 1-8!")
         continue
     except KeyboardInterrupt:
         break
@@ -33,6 +36,7 @@ while not STOP:
             print(data.info())
             print("\nInfo about gaps:")
             print(data.isnull().sum())
+            func.check_for_unic(data)
         case 2:
             READY = False
             BACK = False
@@ -120,6 +124,31 @@ while not STOP:
             print(f"Gaps left: {data[feature].isna().sum()}")
 
         case 5:
+            READY = False
+            BACK = False
+            feature = ""
+            while not READY:
+                feature = input("Choose text feature for tone analysis: ")
+
+                if feature == "b":
+                    BACK = True
+                    break
+
+                if feature in data.columns.to_list():
+                    READY = True
+                else:
+                    print("Invalid name of feature! Available features:")
+                    for mean in data.columns:
+                        print(f"Feature: {mean}")
+
+            if BACK:
+                continue
+
+            data[feature] = data[feature].apply(func.get_tone)
+            print("Done! Example values:")
+            print(data[feature].head())
+
+        case 6:
             BACK = False
             READY = False
             target = ""
@@ -173,12 +202,13 @@ while not STOP:
                 f"Saved: {base_file}_X_train.csv, {base_file}_X_test.csv, {base_file}_Y_train.csv, {base_file}_Y_test.csv"
             )
 
-        case 6:
-            output_file = str(input("Enter output filename: "))
-            data.to_csv(output_file, index=False)
-            print(f"Saved to {output_file}")
         case 7:
+            output_file = str(input("Enter output filename: "))
+            data.to_csv(f"../data/{output_file}.csv", index=False)
+            print(f"Saved to ../data/{output_file}.csv")
+
+        case 8:
             STOP = True
 
         case _:
-            print("Choose 1-7!")
+            print("Choose 1-8!")
