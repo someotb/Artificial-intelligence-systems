@@ -5,7 +5,7 @@ from sklearn.preprocessing import LabelEncoder
 import func
 
 STOP = False
-DATA_FILE = "../data/drugLibTest_raw.tsv"
+DATA_FILE = "data/drugLibTest_raw.tsv"
 
 data = pd.read_csv(DATA_FILE, sep="\t", engine="python")
 
@@ -194,18 +194,18 @@ while not STOP:
             print(f"\nTrain size: {len(X_train)} rows ({(1 - test_size) * 100:.0f}%)")
             print(f"Test size:  {len(X_test)} rows ({test_size * 100:.0f}%)")
             base_file = str(input("Enter base name for test and train files: "))
-            X_train.to_csv(f"../data/{base_file}_X_train.csv", index=False)
-            X_test.to_csv(f"../data/{base_file}_X_test.csv", index=False)
-            Y_train.to_csv(f"../data/{base_file}_Y_train.csv", index=False)
-            Y_test.to_csv(f"../data/{base_file}_Y_test.csv", index=False)
+            X_train.to_csv(f"data/{base_file}_X_train.csv", index=False)
+            X_test.to_csv(f"data/{base_file}_X_test.csv", index=False)
+            Y_train.to_csv(f"data/{base_file}_Y_train.csv", index=False)
+            Y_test.to_csv(f"data/{base_file}_Y_test.csv", index=False)
             print(
                 f"Saved: {base_file}_X_train.csv, {base_file}_X_test.csv, {base_file}_Y_train.csv, {base_file}_Y_test.csv"
             )
 
         case 7:
             output_file = str(input("Enter output filename: "))
-            data.to_csv(f"../data/{output_file}.csv", index=False)
-            print(f"Saved to ../data/{output_file}.csv")
+            data.to_csv(f"data/{output_file}.csv", index=False)
+            print(f"Saved to data/{output_file}.csv")
 
         case 8:
             STOP = True
