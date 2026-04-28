@@ -4,4 +4,4 @@
 !*.md
 !*.py
 !*.tsv
-venv
+.venv

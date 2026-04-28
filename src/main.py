@@ -6,10 +6,10 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 import func
 
-X_test = pd.read_csv("../data/lab6_X_test.csv")
-X_train = pd.read_csv("../data/lab6_X_train.csv")
-y_test = pd.read_csv("../data/lab6_Y_test.csv")
-y_train = pd.read_csv("../data/lab6_Y_train.csv")
+X_test = pd.read_csv("data/lab6_X_test.csv")
+X_train = pd.read_csv("data/lab6_X_train.csv")
+y_test = pd.read_csv("data/lab6_Y_test.csv")
+y_train = pd.read_csv("data/lab6_Y_train.csv")
 
 # Одномерная регрессия
 X_train_1d = X_train[["effectiveness"]]
