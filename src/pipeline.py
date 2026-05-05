@@ -182,20 +182,20 @@ while not STOP:
             X = data.drop(columns=[target])
             Y = data[target]
 
-            X_train, X_test, Y_train, Y_test = train_test_split(
+            X_train_scaled, X_test_scaled, Y_train, Y_test = train_test_split(
                 X, Y, test_size=test_size, random_state=42
             )
 
-            X_train = pd.DataFrame(X_train)
-            X_test = pd.DataFrame(X_test)
+            X_train_scaled = pd.DataFrame(X_train_scaled)
+            X_test_scaled = pd.DataFrame(X_test_scaled)
             Y_train = pd.Series(Y_train)
             Y_test = pd.Series(Y_test)
 
-            print(f"\nTrain size: {len(X_train)} rows ({(1 - test_size) * 100:.0f}%)")
-            print(f"Test size:  {len(X_test)} rows ({test_size * 100:.0f}%)")
+            print(f"\nTrain size: {len(X_train_scaled)} rows ({(1 - test_size) * 100:.0f}%)")
+            print(f"Test size:  {len(X_test_scaled)} rows ({test_size * 100:.0f}%)")
             base_file = str(input("Enter base name for test and train files: "))
-            X_train.to_csv(f"data/{base_file}_X_train.csv", index=False)
-            X_test.to_csv(f"data/{base_file}_X_test.csv", index=False)
+            X_train_scaled.to_csv(f"data/{base_file}_X_train.csv", index=False)
+            X_test_scaled.to_csv(f"data/{base_file}_X_test.csv", index=False)
             Y_train.to_csv(f"data/{base_file}_Y_train.csv", index=False)
             Y_test.to_csv(f"data/{base_file}_Y_test.csv", index=False)
             print(
