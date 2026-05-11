@@ -2,100 +2,66 @@ import warnings
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_absolute_error, r2_score, mean_squared_error, median_absolute_error, explained_variance_score
+from collections import Counter
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
 warnings.filterwarnings("ignore")
 
-# Загрузка
-X_train = pd.read_csv("data/lab6_X_train.csv")
-X_test  = pd.read_csv("data/lab6_X_test.csv")
-y_train = pd.read_csv("data/lab6_Y_train.csv").values.ravel()
-y_test  = pd.read_csv("data/lab6_Y_test.csv").values.ravel()
+test_file = "processed_test.csv"
+train_file = "processed_train.csv"
 
-# Берём ОДИН признак — effectiveness
-X_train_1d = X_train[["effectiveness"]].values
-X_test_1d  = X_test[["effectiveness"]].values
+train = pd.read_csv(f"data/{train_file}", engine="python")
+test = pd.read_csv(f"data/{test_file}", engine="python")
 
-min_mae = 100
-min_med = 100
-best_degree = []
-degrees = []
-maes = []
+scaler = StandardScaler()
+train_scaled = scaler.fit_transform(train)
+test_scaled = scaler.transform(test)
 
-for deg in range(1, 21):
-    # Полиномиальные признаки
-    poly_test = PolynomialFeatures(degree=deg)
-    X_train_poly_t = poly_test.fit_transform(X_train_1d)
-    X_test_poly_t  = poly_test.transform(X_test_1d)
-
-    # Обучение
-    model_t = LinearRegression()
-    model_t.fit(X_train_poly_t, y_train)
-
-    # Предсказание и метрики
-    y_pred = model_t.predict(X_test_poly_t)
-    mae     = mean_absolute_error(y_test, y_pred)
-
-    degrees.append(deg)
-    maes.append(mae)
-
-    if min_mae > mae:
-        min_mae = mae
-        best_degree.append(deg)
-
-# Полиномиальные признаки
-poly = PolynomialFeatures(degree=best_degree[-1])
-X_train_poly = poly.fit_transform(X_train_1d)
-X_test_poly  = poly.transform(X_test_1d)
-
-# Обучение
-model = LinearRegression()
-model.fit(X_train_poly, y_train)
-
-# Предсказание и метрики
-y_pred = model.predict(X_test_poly)
-
-print(f"Лучшее значение MAE: {min_mae} для degree = {best_degree[-1]}")
-print(f"Все значения degree: {[deg for deg in best_degree]}\n")
-
-mae     = mean_absolute_error(y_test, y_pred)
-mse     = mean_squared_error(y_test, y_pred)
-rmse    = np.sqrt(mse)
-r2      = r2_score(y_test, y_pred)
-med_ae  = median_absolute_error(y_test, y_pred)
-
-print(f"{'МЕТРИКИ МОДЕЛИ':^35}")
-print(f"MAE   (ср. ошибка):       {mae:.4f}")
-print(f"MedAE (медианная ошибка): {med_ae:.4f}")
-print(f"MSE   (ср. кв. ошибка):   {mse:.4f}")
-print(f"RMSE  (корень из MSE):     {rmse:.4f}")
-print(f"R²    (детерминация):      {r2:.4f}")
-print("\n")
-print(f"Среднее y_test:   {np.mean(y_test):.4f}")
-print(f"Std y_test:       {np.std(y_test):.4f}")
-print(f"Min предсказание: {y_pred.min():.4f}")
-print(f"Max предсказание: {y_pred.max():.4f}")
-
-X_grid = np.arange(X_train_1d.min(), X_train_1d.max() + 0.1, 0.1).reshape(-1, 1)
-y_grid = model.predict(poly.transform(X_grid))
-
-# График
-plt.figure(figsize=(9, 5))
-plt.scatter(X_test_1d, y_test, color="red", label="Реальные значения", zorder=5)
-plt.plot(X_grid, y_grid, color="blue", linewidth=2, label=f"Poly degree={best_degree[-1]}")
-plt.xlabel("Effectiveness")
-plt.ylabel("Rating")
-plt.title("Polynomial Regression — Effectiveness vs Rating")
-plt.legend()
-plt.tight_layout()
+wcss = []
+for i in range(1, 21):
+    kmeans = KMeans(n_clusters=i, init='k-means++', random_state=42)
+    kmeans.fit(train_scaled)
+    wcss.append(kmeans.inertia_)
 
 plt.figure()
-plt.plot(degrees, maes, label="Зависимость MAE от degrees")
-plt.xlabel("Degrees values")
-plt.ylabel("MAE")
-plt.title("Зависимость MAE от degrees")
-plt.legend()
+plt.title("Elbow method (StandardScaler)")
+plt.plot(wcss)
+plt.xlabel("Cnt of clusters")
+plt.ylabel("WCSS")
+
+kmeans = KMeans(n_clusters=3, init="k-means++", random_state=42)
+kmeans.fit(train_scaled)
+
+train_clusters = kmeans.predict(train_scaled)
+test_clusters = kmeans.predict(test_scaled)
+
+pca = PCA(n_components=2)
+train_2d = pca.fit_transform(train_scaled)
+
+plt.figure(figsize=(10, 6))
+plt.scatter(train_2d[:, 0], train_2d[:, 1], c=train_clusters, cmap='viridis', alpha=0.6)
+plt.xlabel(f'PC1 ({pca.explained_variance_ratio_[0]*100:.1f}%)')
+plt.ylabel(f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}%)')
+plt.title('Кластеры в 2D (StandardScaler + PCA)')
+plt.colorbar(label='Кластер')
+
+print("Распределения классов:")
+print(f"Train: {Counter(train_clusters)}")
+print(f"Test: {Counter(test_clusters)}\n")
+
+print(f"PC1 объясняет {pca.explained_variance_ratio_[0]*100:.1f}% вариации")
+print(f"PC2 объясняет {pca.explained_variance_ratio_[1]*100:.1f}% вариации")
+print(f"Всего: {sum(pca.explained_variance_ratio_)*100:.1f}%\n")
+
+train_with_clusters = train.copy()
+train_with_clusters['cluster'] = train_clusters
+
+for i in range(3):
+    cluster_data = train_with_clusters[train_with_clusters['cluster'] == i]
+    print(f"Кластер {i} ({len(cluster_data)} отзывов, {len(cluster_data)/len(train)*100:.1f}%)")
+    print(cluster_data[['rating', 'effectiveness', 'sideEffects']].mean())
+    print()
 
 plt.show()
