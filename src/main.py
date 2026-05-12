@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import Counter
 from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
@@ -20,10 +21,17 @@ train_scaled = scaler.fit_transform(train)
 test_scaled = scaler.transform(test)
 
 wcss = []
-for i in range(1, 21):
+silhoutte = []
+for i in range(2, 21):
     kmeans = KMeans(n_clusters=i, init='k-means++', random_state=42)
     kmeans.fit(train_scaled)
     wcss.append(kmeans.inertia_)
+    kmeans_sil = KMeans(n_clusters=i, init='k-means++', random_state=42)
+    labels = kmeans_sil.fit_predict(train_scaled)
+    silhoutte.append(silhouette_score(train_scaled, labels))
+
+best_clusters = silhoutte.index(max(silhoutte)) + 1
+print("Лучшее кол-во кластеров по методу Silhoutte score")
 
 plt.figure()
 plt.title("Elbow method (StandardScaler)")
@@ -31,7 +39,13 @@ plt.plot(wcss)
 plt.xlabel("Cnt of clusters")
 plt.ylabel("WCSS")
 
-kmeans = KMeans(n_clusters=3, init="k-means++", random_state=42)
+plt.figure()
+plt.title("Silhoutte score (StandardScaler)")
+plt.plot(silhoutte)
+plt.xlabel("Cnt of clusters")
+plt.ylabel("Silhoutte score")
+
+kmeans = KMeans(n_clusters=best_clusters, init="k-means++", random_state=42)
 kmeans.fit(train_scaled)
 
 train_clusters = kmeans.predict(train_scaled)
@@ -58,7 +72,7 @@ print(f"Всего: {sum(pca.explained_variance_ratio_)*100:.1f}%\n")
 train_with_clusters = train.copy()
 train_with_clusters['cluster'] = train_clusters
 
-for i in range(3):
+for i in range(best_clusters):
     cluster_data = train_with_clusters[train_with_clusters['cluster'] == i]
     print(f"Кластер {i} ({len(cluster_data)} отзывов, {len(cluster_data)/len(train)*100:.1f}%)")
     print(cluster_data[['rating', 'effectiveness', 'sideEffects']].mean())
